@@ -1,54 +1,119 @@
+// routes/monitors.js
 import express from 'express';
-import { pool } from '../lib/db.js';
-import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
+import { MongoClient, ObjectId } from 'mongodb';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const router = express.Router();
-const connection = new IORedis(process.env.REDIS_URL);
-const queue = new Queue('monitor-checks', { connection });
 
-router.post('/', async (req, res) => {
-  try {
-    const { user_id, name, url, check_interval = 60, owner_phone=null, owner_email=null } = req.body;
-    if(!user_id || !url) return res.status(400).json({ error: 'user_id and url required' });
-    const r = await pool.query(
-      `INSERT INTO monitors (user_id,name,url,check_interval,owner_phone,owner_email) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [user_id, name || url, url, check_interval, owner_phone, owner_email]
-    );
-    const monitor = r.rows[0];
-    await queue.add('check', { monitorId: monitor.id }, { delay: 0 });
-    res.json({ monitor });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
-  }
-});
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017';
+const DB_NAME = process.env.DB_NAME || 'uptime';
 
+let client;
+let db;
+async function getDb() {
+  if (db) return db;
+  client = new MongoClient(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+  await client.connect();
+  db = client.db(DB_NAME);
+  return db;
+}
+
+// list monitors
 router.get('/', async (req, res) => {
   try {
-    const user_id = req.query.user_id;
-    if(!user_id) return res.status(400).json({ error: 'user_id required' });
-    const r = await pool.query(`SELECT * FROM monitors WHERE user_id=$1 ORDER BY created_at DESC`, [user_id]);
-    res.json({ monitors: r.rows });
+    const database = await getDb();
+    const monitors = await database.collection('monitors').find({}).toArray();
+    res.json(monitors);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
+    console.error('monitors list error', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/:id/status', async (req, res) => {
+// get monitor
+router.get('/:id', async (req, res) => {
   try {
+    const database = await getDb();
     const id = req.params.id;
-    const r = await pool.query(`SELECT * FROM monitors WHERE id=$1`, [id]);
-    if(r.rows.length===0) return res.status(404).json({ error: 'not found' });
-    const m = r.rows[0];
-    const incidents = await pool.query(`SELECT * FROM incidents WHERE monitor_id=$1 ORDER BY detected_at DESC LIMIT 20`, [id]);
-    res.json({ monitor: m, incidents: incidents.rows });
+    let query;
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
+    const m = await database.collection('monitors').findOne(query);
+    if (!m) return res.status(404).json({ error: 'not found' });
+    res.json(m);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
+    console.error('monitors get error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// create monitor
+router.post('/', async (req, res) => {
+  try {
+    const database = await getDb();
+    const payload = req.body;
+    // minimal validation
+    if (!payload || !payload.url) {
+      return res.status(400).json({ error: 'url required' });
+    }
+    const doc = {
+      url: payload.url,
+      method: payload.method || 'GET',
+      expectedStatusRange: payload.expectedStatusRange || { min: 200, max: 399 },
+      disabled: payload.disabled || false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const r = await database.collection('monitors').insertOne(doc);
+    res.json({ insertedId: r.insertedId, doc });
+  } catch (err) {
+    console.error('monitors create error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// update monitor
+router.put('/:id', async (req, res) => {
+  try {
+    const database = await getDb();
+    const id = req.params.id;
+    let query;
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
+    const payload = req.body;
+    payload.updatedAt = new Date();
+    const r = await database.collection('monitors').findOneAndUpdate(query, { $set: payload }, { returnDocument: 'after' });
+    if (!r.value) return res.status(404).json({ error: 'not found' });
+    res.json(r.value);
+  } catch (err) {
+    console.error('monitors update error', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// delete monitor
+router.delete('/:id', async (req, res) => {
+  try {
+    const database = await getDb();
+    const id = req.params.id;
+    let query;
+    try {
+      query = { _id: new ObjectId(id) };
+    } catch (e) {
+      query = { id };
+    }
+    const r = await database.collection('monitors').deleteOne(query);
+    res.json({ deletedCount: r.deletedCount });
+  } catch (err) {
+    console.error('monitors delete error', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
