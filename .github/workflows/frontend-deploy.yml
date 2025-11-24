@@ -1,0 +1,46 @@
+name: Frontend CI / Deploy to Vercel
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - 'release/**'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: uptime-frontend
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build
+      run: npm run build
+
+    - name: Deploy to Vercel (via API)
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_BRANCH: ${{ secrets.VERCEL_BRANCH || 'main' }}
+      run: |
+        echo "Triggering Vercel deployment (if project linked to Git, Vercel auto-deploy is recommended)."
+        # Optional: call Vercel Deploy API – many teams prefer Vercel Git integration instead
+        curl -s -X POST "https://api.vercel.com/v13/deployments" \
+          -H "Authorization: Bearer $VERCEL_TOKEN" \
+          -F "projectId=$VERCEL_PROJECT_ID" \
+          -F "gitSource=github" \
+          | jq .
