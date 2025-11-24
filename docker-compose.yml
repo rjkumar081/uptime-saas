@@ -1,0 +1,70 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pingpulse
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pingpulse
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: supersecretkey
+      BACKEND_INTERNAL_SECRET: internal-secret
+      TG_BOT_TOKEN: ""
+      BACKEND_CALLBACK_URL: "http://backend:8000"
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  worker:
+    build: ./worker
+    depends_on:
+      - redis
+      - backend
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      BACKEND_CALLBACK_URL: "http://backend:8000"
+      BACKEND_INTERNAL_SECRET: internal-secret
+    command: rq worker checks --url redis://redis:6379/0
+
+  scheduler:
+    build: ./backend
+    depends_on:
+      - backend
+      - redis
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pingpulse
+      REDIS_URL: redis://redis:6379/0
+    command: python -u -c "from app.worker_scheduler import enqueue_checks, time; import time as t; \
+      import app.worker_scheduler as s; \
+      s.enqueue_checks(); \
+      import sys; \
+      while True: s.enqueue_checks(); t.sleep(30)"
+
+  frontend:
+    image: node:18
+    working_dir: /frontend
+    volumes:
+      - ./frontend:/frontend
+    ports:
+      - "3000:3000"
+    command: sh -c "cd /frontend && npm install && npm run dev"
+
+volumes:
+  db-data:
