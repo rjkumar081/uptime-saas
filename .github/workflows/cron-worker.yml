@@ -27,11 +27,15 @@ jobs:
 
       - name: Run cron worker (process due monitors)
         env:
-          DATABASE_URL: ${{ postgresql://uptime_db_x5yw_user:6cTLmQN4fafezR1kWAr6QEpaR8M65TXC@dpg-d4i2kji4d50c73cm9bm0-a/uptime_db_x5yw }}
-          REDIS_URL: ${{ redis://default:AV20AAIncDI2OTRkYzM1MTczNWM0OWJjYTQ4YjEzMjQ2MDA5ODYwNHAyMjM5ODg@enabling-jackal-23988.upstash.io:6379 }}
-          WHATSAPP_API_KEY: ${{ secrets.WHATSAPP_API_KEY }}
-          SENDGRID_API_KEY: ${{ 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 }}
-          ALERT_FROM_EMAIL: ${{ rjkumar081@gmail.com }}
+         # .github/workflows/cron-worker.yml (only the env part)
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  REDIS_URL: ${{ secrets.REDIS_URL }}
+  WHATSAPP_API_KEY: ${{ secrets.WHATSAPP_API_KEY }}
+  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+  ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
+  USE_BULLMQ: 'false'
+
         run: |
           echo "Starting cron worker"
           node worker/cronWorker.js
