@@ -27,15 +27,12 @@ jobs:
 
       - name: Run cron worker (process due monitors)
         env:
-         # .github/workflows/cron-worker.yml (only the env part)
-env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  REDIS_URL: ${{ secrets.REDIS_URL }}
-  WHATSAPP_API_KEY: ${{ secrets.WHATSAPP_API_KEY }}
-  SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-  ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
-  USE_BULLMQ: 'false'
-
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          # WHATSAPP_API_KEY can be added later if you want WhatsApp alerts
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
+          USE_BULLMQ: 'false'
         run: |
           echo "Starting cron worker"
           node worker/cronWorker.js
