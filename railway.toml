@@ -1,6 +1,0 @@
-[build]
-builder = "Nixpacks"
-dir = "uptime-backend"
-
-[start]
-cmd = "node server.js"
