@@ -36,20 +36,21 @@ jobs:
     - name: Build (if needed)
       run: echo "no build step for backend"
 
-    # 🚀 Install Railway CLI
-    - name: Install Railway CLI
-      run: |
-        echo "Installing Railway CLI..."
-        curl -fsSL https://railway.app/install.sh | sh
-        railway --version || true
-
     # 🚀 Deploy to Railway (non-interactive CI mode)
     - name: Deploy to Railway
       env:
+        # ** FIX 1: Provide your general Railway API Token **
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        
+        # ** FIX 2: Provide the specific Project ID to deploy to **
+        # You MUST set this secret in GitHub Secrets > Actions
+        RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT_ID }}
+        
       run: |
-        echo "Deploying to Railway via npx CLI..."
-        export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+        echo "Deploying to Railway via CLI..."
+        # NOTE: Removed the separate 'Install Railway CLI' step.
+        # npx handles the install and execution in one command.
+        # Also removed the redundant 'export RAILWAY_TOKEN' line.
         npx @railway/cli up --ci --verbose
 
     - name: Done
