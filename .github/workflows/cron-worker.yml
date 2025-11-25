@@ -1,10 +1,9 @@
 name: Cron Worker - run monitor checks
 
-# Run every 5 minutes
 on:
   schedule:
-    - cron: '*/5 * * * *'
-  workflow_dispatch: # allow manual trigger
+    - cron: "*/5 * * * *"   # Run every 5 minutes
+  workflow_dispatch:        # allow manual trigger
 
 jobs:
   run-cron-worker:
@@ -24,14 +23,13 @@ jobs:
 
       - name: Install dependencies
         run: |
-    npm install
-    npm install mongodb
+          npm install
+          npm install mongodb
 
       - name: Run cron worker (process due monitors)
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
-          # WHATSAPP_API_KEY can be added later if you want WhatsApp alerts
           SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
           ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
           USE_BULLMQ: 'false'
