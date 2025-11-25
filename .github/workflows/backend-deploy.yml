@@ -1,5 +1,6 @@
 name: Backend CI / Deploy to Railway
 
+# Trigger on pushes to main/master or release branches; also manual dispatch
 on:
   push:
     branches:
@@ -25,7 +26,7 @@ jobs:
         node-version: '18'
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
     - name: Run lint (optional)
       run: npm run lint || echo "no lint script"
@@ -36,14 +37,48 @@ jobs:
     - name: Build (if needed)
       run: echo "no build step for backend"
 
-    - name: Install Railway CLI
-      run: curl -fsSL https://railway.app/install.sh | sh
+    - name: Show reference screenshot path (for debugging)
+      run: echo "Reference screenshot (local): /mnt/data/9aeddbed-fb7f-4624-9918-61377a3e437f.png"
 
-    - name: Deploy to Railway (CI mode)
+    # Install Railway CLI
+    - name: Install Railway CLI
+      run: |
+        set -e
+        echo "Installing Railway CLI..."
+        curl -fsSL https://railway.app/install.sh | sh
+        echo "railway version:"
+        railway --version || true
+
+    # Deploy: non-interactive CI mode (uses RAILWAY_TOKEN secret)
+    - name: Deploy to Railway (CI mode - non-interactive)
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       run: |
-        echo "Deploying to Railway (CI mode)..."
-        export RAILWAY_TOKEN=$RAILWAY_TOKEN
-        railway up --project "$RAILWAY_PROJECT_ID" --ci
+        set -e
+        echo "Starting Railway deploy (CI mode)..."
+
+        if [ -z "$RAILWAY_TOKEN" ]; then
+          echo "ERROR: RAILWAY_TOKEN secret is missing. Add it in GitHub repo secrets."
+          exit 1
+        fi
+
+        # Export token so CLI reads it from env
+        export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+
+        # Try the installed railway binary first (some installs place binary at /usr/local/bin/railway)
+        if command -v railway >/dev/null 2>&1 ; then
+          echo "Using railway binary"
+          # --ci makes it non-interactive and uses RAILWAY_TOKEN for auth
+          railway up --ci --verbose || {
+            echo "railway up failed; falling back to npx @railway/cli"
+            npx @railway/cli up --ci --verbose
+          }
+        else
+          echo "railway binary not found; using npx @railway/cli"
+          npx @railway/cli up --ci --verbose
+        fi
+
+        echo "Railway deploy command finished."
+
+    - name: Done
+      run: echo "Workflow finished."
