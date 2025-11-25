@@ -44,7 +44,7 @@ jobs:
         
         # ** FIX 2: Provide the specific Project ID to deploy to **
         # You MUST set this secret in GitHub Secrets > Actions
-        RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT_ID }}
+        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         
       run: |
         echo "Deploying to Railway via CLI..."
