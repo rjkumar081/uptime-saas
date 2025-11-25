@@ -37,15 +37,29 @@ jobs:
       run: echo "no build step for backend"
 
     # ------------------------------
-    # 🚀 Railway Deployment Section
+    # 🚀 Railway Deployment Section (CI mode)
     # ------------------------------
     - name: Install Railway CLI
       run: curl -fsSL https://railway.app/install.sh | sh
 
-    - name: Deploy to Railway
+    - name: Deploy to Railway (CI, no interactive login)
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}   # Project ID or service id (use service id if up fails)
       run: |
-        railway login --token "$RAILWAY_TOKEN"
-        railway up --serviceId $RAILWAY_PROJECT_ID --yes
+        echo "Deploying to Railway (CI mode)..."
+        # Prefer the installed railway binary; run in CI mode so no interactive login is required.
+        # If the railway binary supports --ci, this will use the RAILWAY_TOKEN from environment.
+        set -e
+
+        # Try direct CLI first
+        if command -v railway >/dev/null 2>&1; then
+          echo "railway CLI installed. Running railway up --service \"$RAILWAY_PROJECT_ID\" --ci"
+          railway up --service "$RAILWAY_PROJECT_ID" --ci || {
+            echo "railway up failed; attempting npx fallback"
+            npx @railway/cli up --service="$RAILWAY_PROJECT_ID" --ci
+          }
+        else
+          echo "railway CLI not found; using npx fallback"
+          npx @railway/cli up --service="$RAILWAY_PROJECT_ID" --ci
+        fi
