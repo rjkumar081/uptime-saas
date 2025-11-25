@@ -1,4 +1,4 @@
-name: Backend CI / Deploy to Render
+name: Backend CI / Deploy to Railway
 
 on:
   push:
@@ -33,38 +33,19 @@ jobs:
     - name: Run tests (optional)
       run: npm test || echo "no tests"
 
-    - name: Build (if you have build step)
+    - name: Build (if needed)
       run: echo "no build step for backend"
 
-    - name: Trigger Render deploy
-      env:
-        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
-      run: |
-        echo "Triggering deploy on Render for service $RENDER_SERVICE_ID"
-        curl -s -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
-          -H "Authorization: Bearer $RENDER_API_KEY" \
-          -H "Content-Type: application/json" \
-          -d "{\"clearCache\": false}" \
-          | jq .
+    # ------------------------------
+    # 🚀 Railway Deployment Section
+    # ------------------------------
+    - name: Install Railway CLI
+      run: curl -fsSL https://railway.app/install.sh | sh
 
-    - name: Wait for Render deploy (poll)
+    - name: Deploy to Railway
       env:
-        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
       run: |
-        DEPLOY_ID=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID" | jq -r '.latestDeploy.id')
-        echo "Latest deploy id: $DEPLOY_ID"
-        for i in {1..60}; do
-          STATUS=$(curl -s -H "Authorization: Bearer $RENDER_API_KEY" "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys/$DEPLOY_ID" | jq -r '.status')
-          echo "Deploy status: $STATUS"
-          if [[ "$STATUS" == "active" || "$STATUS" == "failed" ]]; then
-            break
-          fi
-          sleep 10
-        done
-        if [[ "$STATUS" == "failed" ]]; then
-          echo "Render deploy failed"
-          exit 1
-        fi
-        echo "Render deploy finished with status: $STATUS"
+        railway login --apiKey $RAILWAY_TOKEN
+        railway up --serviceId $RAILWAY_PROJECT_ID --yes
