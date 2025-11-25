@@ -25,7 +25,7 @@ jobs:
         node-version: '18'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install
 
     - name: Run lint (optional)
       run: npm run lint || echo "no lint script"
@@ -36,11 +36,21 @@ jobs:
     - name: Build (if needed)
       run: echo "no build step for backend"
 
-    # 🚀 FINAL Railway Deploy Step (100% working)
+    # 🚀 Install Railway CLI
+    - name: Install Railway CLI
+      run: |
+        echo "Installing Railway CLI..."
+        curl -fsSL https://railway.app/install.sh | sh
+        railway --version || true
+
+    # 🚀 Deploy to Railway (non-interactive CI mode)
     - name: Deploy to Railway
       env:
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       run: |
-        echo "Deploying via npx Railway CLI..."
+        echo "Deploying to Railway via npx CLI..."
         export RAILWAY_TOKEN="$RAILWAY_TOKEN"
         npx @railway/cli up --ci --verbose
+
+    - name: Done
+      run: echo "Workflow finished."
