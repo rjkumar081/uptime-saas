@@ -1,0 +1,10 @@
+# root/railway.toml
+[[services]]
+name = "uptime-backend"
+path = "uptime-backend"
+start = "npm start"
+
+[[services]]
+name = "uptime-frontend"
+path = "uptime-frontend"
+start = "npm run start"
