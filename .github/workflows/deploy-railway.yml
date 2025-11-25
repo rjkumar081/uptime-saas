@@ -39,18 +39,15 @@ jobs:
     # 🚀 Deploy to Railway (non-interactive CI mode)
     - name: Deploy to Railway
       env:
-        # ** FIX 1: Provide your general Railway API Token **
+        # 1. This is correct: Env var name RAILWAY_TOKEN gets secret RAILWAY_TOKEN
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         
-        # ** FIX 2: Provide the specific Project ID to deploy to **
-        # You MUST set this secret in GitHub Secrets > Actions
-        RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+        # 2. **CRITICAL FIX**: Change the environment variable name to RAILWAY_PROJECT
+        #    This is what the Railway CLI looks for.
+        RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT_ID }}
         
       run: |
         echo "Deploying to Railway via CLI..."
-        # NOTE: Removed the separate 'Install Railway CLI' step.
-        # npx handles the install and execution in one command.
-        # Also removed the redundant 'export RAILWAY_TOKEN' line.
         npx @railway/cli up --ci --verbose
 
     - name: Done
