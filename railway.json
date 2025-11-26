@@ -1,0 +1,19 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "start": "npm start",
+    "restartPolicyType": "ON_FAILURE"
+  },
+  "services": {
+    "backend": {
+      "path": "uptime-backend",
+      "start": "npm start"
+    },
+    "frontend": {
+      "path": "uptime-frontend",
+      "start": "npm run start"
+    }
+  }
+}
