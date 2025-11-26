@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - master
-      - 'release/**'
   workflow_dispatch:
 
 jobs:
@@ -27,28 +26,17 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Run lint (optional)
-      run: npm run lint || echo "no lint script"
-
-    - name: Run tests (optional)
-      run: npm test || echo "no tests"
-
     - name: Build (if needed)
       run: echo "no build step for backend"
 
-    # 🚀 Deploy to Railway (non-interactive CI mode)
-    - name: Deploy to Railway
+    - name: Deploy to Railway (non-interactive, npx cli)
       env:
-        # 1. This is correct: Env var name RAILWAY_TOKEN gets secret RAILWAY_TOKEN
         RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        
-        # 2. **CRITICAL FIX**: Change the environment variable name to RAILWAY_PROJECT
-        #    This is what the Railway CLI looks for.
-        RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT_ID }}
-        
       run: |
-        echo "Deploying to Railway via CLI..."
+        if [ -z "$RAILWAY_TOKEN" ]; then
+          echo "ERROR: RAILWAY_TOKEN missing"
+          exit 1
+        fi
+        export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+        echo "Deploying via npx @railway/cli up --ci"
         npx @railway/cli up --ci --verbose
-
-    - name: Done
-      run: echo "Workflow finished."
