@@ -1,26 +1,9 @@
 {
   "name": "uptime-backend",
-  "version": "0.1.0",
-  "type": "module",
   "scripts": {
-    "start": "node server/server.js",
-    "worker": "node worker/worker.js",
-    "migrate": "node server/migrate.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "axios": "^1.4.0",
-    "body-parser": "^1.20.2",
-    "bullmq": "^1.70.0",
-    "dotenv": "^16.0.3",
-    "express": "^4.18.2",
-    "ioredis": "^5.3.2",
-    "node-fetch": "^3.3.2",
-    "pg": "^8.9.0"
-  },
-  "devDependencies": {
-    "@railway/cli": "^4.11.1" 
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "express": "^4.18.0"
   }
 }
