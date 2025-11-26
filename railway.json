@@ -1,3 +1,5 @@
+# 1) create railway.json in repo root
+cat > railway.json <<'JSON'
 {
   "build": {
     "builder": "NIXPACKS"
@@ -17,3 +19,9 @@
     }
   }
 }
+JSON
+
+# 2) commit & push
+git add railway.json
+git commit -m "Add railway.json (set root & services for Nixpacks)"
+git push origin main
