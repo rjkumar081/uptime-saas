@@ -1,10 +1,9 @@
-# root/railway.toml
-[[services]]
-name = "uptime-backend"
-path = "uptime-backend"
-start = "npm start"
+# This tells Railway which folder to deploy
 
-[[services]]
-name = "uptime-frontend"
-path = "uptime-frontend"
-start = "npm run start"
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+# Tell Railway the correct service folder
+rootDirectory = "uptime-backend"
+startCommand = "npm start"
