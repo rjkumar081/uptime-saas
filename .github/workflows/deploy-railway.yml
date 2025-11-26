@@ -1,4 +1,4 @@
-name: Deploy to Railway (manual)
+name: Deploy to Railway (manual - pinned service)
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ jobs:
         working-directory: uptime-backend
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Use Node.js
@@ -22,27 +22,35 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Validate RAILWAY_TOKEN
+      - name: Validate required secret
         run: |
           if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "ERROR: RAILWAY_TOKEN secret missing"
+            echo "ERROR: RAILWAY_TOKEN secret missing. Create a Project token in Railway and add it as repo secret."
             exit 1
           fi
-          echo "✓ RAILWAY_TOKEN exists (masked)."
+          echo "RAILWAY_TOKEN present (masked)."
 
-      - name: Debug whoami (validate token)
+      - name: Debug: whoami (validate token)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Validating token using railway whoami..."
-          npx @railway/cli whoami --verbose || true
+          echo "=== railway whoami (validate token) ==="
+          RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
+          echo "=== end whoami ==="
 
-      - name: Deploy to Railway
+      - name: Deploy to Railway (explicit service)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "Starting Railway deploy (non-interactive)..."
-          npx @railway/cli up --ci --verbose
+          set -euo pipefail
+          SERVICE_ID="2aa0ebba-3482-4618-b484-b729d11d046e"
+          echo "Starting Railway deploy for service: $SERVICE_ID"
+          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+          npx @railway/cli up --ci --service "$SERVICE_ID" --verbose || {
+            echo "railway up failed with exit code $?"
+            npx @railway/cli --version || true
+            exit 1
+          }
 
       - name: Done
         run: echo "Deploy workflow finished."
