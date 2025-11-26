@@ -1,88 +1,50 @@
-name: CI & Deploy (single workflow, pinned service)
+name: Deploy to Railway
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
 
 jobs:
-  ci_and_deploy:
+  deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: uptime-backend
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Use Node 18
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "18"
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Lint (optional)
-        run: npm run lint || echo "no lint"
-
-      - name: Tests (optional)
-        run: npm test || echo "no tests"
-
-      - name: Quick health check (ensure server file & start script)
-        run: |
-          echo "Listing uptime-backend files:"
-          ls -la || true
-          if [ -f package.json ]; then
-            echo "package.json present:"
-            cat package.json
-          fi
-
-      - name: Ensure RAILWAY_TOKEN secret exists
+      - name: Check Railway Token
         run: |
           if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "ERROR: RAILWAY_TOKEN missing. Create a Project token in Railway and add as repo secret."
+            echo "ERROR: RAILWAY_TOKEN missing"
             exit 1
           fi
-          echo "RAILWAY_TOKEN present (masked)."
+          echo "Token OK"
 
-      - name: Debug: railway whoami (validate token; non-fatal)
+      - name: Railway Whoami
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "=== railway whoami (validate token) ==="
+          echo "Running railway whoami..."
           RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
-          echo "=== end whoami ==="
 
-      - name: Deploy pinned service to Railway
+      - name: Deploy Service
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          set -euo pipefail
-          # fallback service id (your provided id). Replace if you want.
-          DEFAULT_SERVICE="2aa0ebba-3482-4618-b484-b729d11d046e"
-          # prefer secret if set
-          if [ -n "${{ secrets.RAILWAY_SERVICE }}" ]; then
-            SERVICE_ID="${{ secrets.RAILWAY_SERVICE }}"
-            echo "Using RAILWAY_SERVICE from secrets (masked)."
-          else
-            SERVICE_ID="$DEFAULT_SERVICE"
-            echo "RAILWAY_SERVICE secret not set — using fallback service id."
-          fi
-
-          echo "Deploying service: $SERVICE_ID"
+          SERVICE_ID="2aa0ebba-3482-4618-b484-b729d11d046e"
+          echo "Deploying service $SERVICE_ID"
           export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-          # explicit non-interactive deploy for single service
-          npx @railway/cli up --ci --service "$SERVICE_ID" --verbose || {
-            echo "railway up failed with exit code $?"
-            npx @railway/cli --version || true
-            exit 1
-          }
+          npx @railway/cli up --ci --service "$SERVICE_ID" --verbose
 
       - name: Done
-        run: echo "CI + Deploy completed."
+        run: echo "Deployment complete"
