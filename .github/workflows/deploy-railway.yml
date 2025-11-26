@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - 'release/**'
   workflow_dispatch:
 
 jobs:
@@ -15,28 +16,54 @@ jobs:
         working-directory: uptime-backend
 
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm install
 
-    - name: Build (if needed)
-      run: echo "no build step for backend"
+      - name: Build (if needed)
+        run: echo "no build step for backend"
 
-    - name: Deploy to Railway (non-interactive, npx cli)
-      env:
-        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      run: |
-        if [ -z "$RAILWAY_TOKEN" ]; then
-          echo "ERROR: RAILWAY_TOKEN missing"
-          exit 1
-        fi
-        export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-        echo "Deploying via npx @railway/cli up --ci"
-        npx @railway/cli up --ci --verbose
+      # -------------------------
+      # DEBUG STEP: whoami
+      # -------------------------
+      - name: Debug: railway whoami
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "=== Debug: Checking Railway Token (whoami) ==="
+          # Print which env var we have (masked by GH) then run whoami for visibility
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "RAILWAY_TOKEN is empty (secret may be missing)"
+          else
+            echo "RAILWAY_TOKEN appears set (value masked in logs)"
+          fi
+          # Run whoami to validate token and see account/project access (non-fatal)
+          RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
+          echo "=== End whoami debug ==="
+
+      # -------------------------
+      # DEPLOY STEP
+      # -------------------------
+      - name: Deploy to Railway (non-interactive, npx cli)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -e
+          echo "Starting Railway deploy..."
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "ERROR: RAILWAY_TOKEN secret is missing. Add it in GitHub repo secrets."
+            exit 1
+          fi
+          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+          echo "Deploying via npx @railway/cli up --ci --verbose"
+          npx @railway/cli up --ci --verbose
+
+      - name: Done
+        run: echo "Workflow finished."
