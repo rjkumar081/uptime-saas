@@ -1,11 +1,17 @@
-name: Deploy to Railway (single service, run from repo root)
+name: Deploy to Railway
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: uptime-backend
 
     steps:
       - name: Checkout
@@ -16,25 +22,29 @@ jobs:
         with:
           node-version: "18"
 
-      - name: Ensure token present
+      - name: Check Railway Token
         run: |
           if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "ERROR: RAILWAY_TOKEN secret missing"
+            echo "ERROR: RAILWAY_TOKEN missing"
             exit 1
           fi
           echo "Token OK"
 
-      - name: Railway whoami
+      - name: Railway Whoami
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
+          echo "Running railway whoami..."
           RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
 
-      - name: Deploy (from repo root)
+      - name: Deploy Service
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           SERVICE_ID="2aa0ebba-3482-4618-b484-b729d11d046e"
-          echo "Deploying service $SERVICE_ID from repo root"
+          echo "Deploying service $SERVICE_ID"
           export RAILWAY_TOKEN="$RAILWAY_TOKEN"
           npx @railway/cli up --ci --service "$SERVICE_ID" --verbose
+
+      - name: Done
+        run: echo "Deployment complete"
