@@ -1,4 +1,4 @@
-name: Deploy to Railway (manual + verbose debug)
+name: Deploy to Railway (manual)
 
 on:
   workflow_dispatch:
@@ -17,74 +17,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Show repo files (debug)
-        run: |
-          echo "=== repo root listing ==="
-          ls -la
-          echo "=== .github/workflows listing ==="
-          ls -la .github/workflows || true
-          echo "=== uptime-backend listing ==="
-          ls -la uptime-backend || true
-          echo "=== cat railway.json (repo root) if exists ==="
-          test -f railway.json && echo "=== railway.json ===" && sed -n '1,200p' railway.json || echo "railway.json not found"
-          echo "=== cat uptime-backend/railway.json (if exists) ==="
-          test -f uptime-backend/railway.json && sed -n '1,200p' uptime-backend/railway.json || echo "uptime-backend/railway.json not found"
-
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: Validate secrets presence
+      - name: Validate RAILWAY_TOKEN
         run: |
-          echo "RAILWAY_TOKEN set? -> ${RAILWAY_TOKEN:+yes}${RAILWAY_TOKEN:-no}"
-          echo "RAILWAY_PROJECT set? -> ${RAILWAY_PROJECT:+yes}${RAILWAY_PROJECT:-no}"
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
-
-      - name: Debug: railway whoami (validate token)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          echo "=== Running whoami (this validates token and shows account) ==="
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "ERROR: RAILWAY_TOKEN is empty - add secret in GitHub repo settings"
-          else
-            # run whoami (do not fail pipeline here; we want logs)
-            RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || echo "whoami returned non-zero (check token/project access)"
-          fi
-
-      - name: (Optional) show project info if RAILWAY_PROJECT provided
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
-        run: |
-          if [ -n "$RAILWAY_PROJECT" ]; then
-            echo "=== Fetching project info for RAILWAY_PROJECT=$RAILWAY_PROJECT ==="
-            RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli project:get "$RAILWAY_PROJECT" || echo "project:get failed"
-          else
-            echo "RAILWAY_PROJECT not provided — CLI will try to auto-detect project"
-          fi
-
-      - name: Deploy to Railway (verbose)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT: ${{ secrets.RAILWAY_PROJECT }}
-        run: |
-          set -euo pipefail
-          echo "=== Starting Railway deploy (npx @railway/cli up --ci --verbose) ==="
-          echo "Note: if this fails with 'Project Token not found' your token is invalid or lacks access."
-          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-          # If RAILWAY_PROJECT is set, pass it as an environment variable to the CLI if supported.
-          # Using npx ensures latest cli is used.
-          npx @railway/cli up --ci --verbose || {
-            echo "=== railway up failed with exit code $? ==="
-            # show installed CLI version and help to diagnose unexpected args
-            npx @railway/cli --version || true
-            npx @railway/cli --help | sed -n '1,200p' || true
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "ERROR: RAILWAY_TOKEN secret missing"
             exit 1
-          }
+          fi
+          echo "✓ RAILWAY_TOKEN exists (masked)."
+
+      - name: Debug whoami (validate token)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Validating token using railway whoami..."
+          npx @railway/cli whoami --verbose || true
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Starting Railway deploy (non-interactive)..."
+          npx @railway/cli up --ci --verbose
 
       - name: Done
         run: echo "Deploy workflow finished."
