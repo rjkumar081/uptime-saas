@@ -1,0 +1,9 @@
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "start": "npm start",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
