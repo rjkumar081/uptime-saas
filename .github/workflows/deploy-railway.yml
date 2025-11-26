@@ -1,6 +1,5 @@
 name: Deploy to Railway (manual)
 
-# Manual run only (you can add push branches if you want)
 on:
   workflow_dispatch:
 
@@ -31,7 +30,6 @@ jobs:
           fi
           echo "RAILWAY_TOKEN found (masked)."
 
-      # Debug: whoami to validate token (non-fatal)
       - name: Debug: Validate Railway token (whoami)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -39,20 +37,6 @@ jobs:
           echo "Running railway whoami to validate token..."
           RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
 
-      # Optional: ensure correct project/service id is set (not required)
-      # If you want to pin to a specific project you may set RAILWAY_PROJECT in repository secrets
-      - name: Show configured project (optional)
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          if [ -n "${{ secrets.RAILWAY_PROJECT }}" ]; then
-            echo "RAILWAY_PROJECT is set (masked). Showing project info..."
-            RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli project:get ${{ secrets.RAILWAY_PROJECT }} || true
-          else
-            echo "RAILWAY_PROJECT not set — CLI will auto-detect project when possible."
-          fi
-
-      # Final deploy - non-interactive CI mode using npx railway CLI
       - name: Deploy to Railway (non-interactive)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -60,8 +44,7 @@ jobs:
           set -euo pipefail
           echo "Starting Railway deploy (non-interactive)..."
           export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-          # Run deploy - CLI will use railway.json or detect service root if configured in Railway dashboard.
-          # --ci keeps it non-interactive.
+          # Use npx so you don't need to pre-install CLI
           npx @railway/cli up --ci --verbose
 
       - name: Done
