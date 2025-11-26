@@ -1,15 +1,14 @@
-name: Backend CI
+name: Deploy to Railway (manual)
 
+# Manual run only (you can add push branches if you want)
 on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  backend-ci:
+  deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -19,22 +18,51 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use Node 18
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "18"
 
-      - name: Install dependencies
-        run: npm install
+      - name: Ensure RAILWAY_TOKEN is present
+        run: |
+          if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
+            echo "ERROR: Add RAILWAY_TOKEN as repository secret (Railway Project token)"
+            exit 1
+          fi
+          echo "RAILWAY_TOKEN found (masked)."
 
-      - name: Lint (optional)
-        run: npm run lint || echo "No lint script"
+      # Debug: whoami to validate token (non-fatal)
+      - name: Debug: Validate Railway token (whoami)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          echo "Running railway whoami to validate token..."
+          RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
 
-      - name: Tests (optional)
-        run: npm test || echo "No test script"
+      # Optional: ensure correct project/service id is set (not required)
+      # If you want to pin to a specific project you may set RAILWAY_PROJECT in repository secrets
+      - name: Show configured project (optional)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -n "${{ secrets.RAILWAY_PROJECT }}" ]; then
+            echo "RAILWAY_PROJECT is set (masked). Showing project info..."
+            RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli project:get ${{ secrets.RAILWAY_PROJECT }} || true
+          else
+            echo "RAILWAY_PROJECT not set — CLI will auto-detect project when possible."
+          fi
 
-      - name: Build (optional)
-        run: echo "No build step for backend"
+      # Final deploy - non-interactive CI mode using npx railway CLI
+      - name: Deploy to Railway (non-interactive)
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Starting Railway deploy (non-interactive)..."
+          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
+          # Run deploy - CLI will use railway.json or detect service root if configured in Railway dashboard.
+          # --ci keeps it non-interactive.
+          npx @railway/cli up --ci --verbose
 
-      - name: Finished
-        run: echo "Backend CI completed successfully ✔"
+      - name: Done
+        run: echo "Deploy workflow finished."
