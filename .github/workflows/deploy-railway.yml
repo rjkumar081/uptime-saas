@@ -1,4 +1,4 @@
-name: Deploy to Railway (manual, pinned service)
+name: Deploy to Railway (manual)
 
 on:
   workflow_dispatch:
@@ -14,65 +14,35 @@ jobs:
         working-directory: uptime-backend
 
     steps:
-      - name: Checkout repo
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Show repo files (debug)
-        run: |
-          echo "=== repo root listing ==="
-          ls -la
-          echo "=== uptime-backend listing ==="
-          ls -la uptime-backend || true
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
 
-      - name: Validate required secrets
+      - name: Validate RAILWAY_TOKEN
         run: |
           if [ -z "${{ secrets.RAILWAY_TOKEN }}" ]; then
-            echo "ERROR: RAILWAY_TOKEN missing"
+            echo "ERROR: RAILWAY_TOKEN secret missing"
             exit 1
           fi
-          if [ -z "${{ secrets.RAILWAY_PROJECT }}" ]; then
-            echo "WARNING: RAILWAY_PROJECT not set (recommended)."
-          fi
-          if [ -z "${{ secrets.RAILWAY_SERVICE }}" ]; then
-            echo "ERROR: RAILWAY_SERVICE missing - set service id in secrets"
-            exit 1
-          fi
-          echo "Secrets present (masked)."
+          echo "✓ RAILWAY_TOKEN exists (masked)."
 
-      - name: Debug: whoami (validate token)
+      - name: Debug whoami (validate token)
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "=== railway whoami ==="
-          RAILWAY_TOKEN="$RAILWAY_TOKEN" npx @railway/cli whoami --verbose || true
-          echo "=== end whoami ==="
+          echo "Validating token using railway whoami..."
+          npx @railway/cli whoami --verbose || true
 
-      - name: Deploy to Railway (explicit project & service)
+      - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          set -euo pipefail
-          echo "Starting railway up (explicit project + service)..."
-          export RAILWAY_TOKEN="$RAILWAY_TOKEN"
-
-          # prefer explicit project id if provided
-          if [ -n "${{ secrets.RAILWAY_PROJECT }}" ]; then
-            echo "Using project: (masked)"
-            PROJECT_ARG="--project \"${{ secrets.RAILWAY_PROJECT }}\""
-          else
-            PROJECT_ARG=""
-          fi
-
-          # always use service id (must be provided)
-          SERVICE_ID="${{ secrets.RAILWAY_SERVICE }}"
-
-          echo "Running: npx @railway/cli up --ci --service \"$SERVICE_ID\" $PROJECT_ARG --verbose"
-          # shell-expand safely
-          eval npx @railway/cli up --ci --service \"$SERVICE_ID\" $PROJECT_ARG --verbose || {
-            echo "railway up failed with exit code $?"
-            npx @railway/cli --version || true
-            exit 1
-          }
+          echo "Starting Railway deploy (non-interactive)..."
+          npx @railway/cli up --ci --verbose
 
       - name: Done
         run: echo "Deploy workflow finished."
