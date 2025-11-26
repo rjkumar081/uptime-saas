@@ -1,9 +1,0 @@
-# This tells Railway which folder to deploy
-
-[build]
-builder = "NIXPACKS"
-
-[deploy]
-# Tell Railway the correct service folder
-rootDirectory = "uptime-backend"
-startCommand = "npm start"
