@@ -1,15 +1,9 @@
-# create a simple package.json at repo root (if not already)
-cat > package.json <<'JSON'
-{
-  "name": "uptime-root",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node uptime-backend/server.js"
-  }
-}
-JSON
+import express from 'express';
+const app = express();
 
-git add package.json
-git commit -m "Add root start script -> run uptime-backend/server.js for Railway"
-git push origin main
+app.get('/health', (req, res) => res.json({ ok: true }));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
